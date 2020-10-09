@@ -6,81 +6,118 @@ from nmigen.asserts import Assert, Assume, Cover
 from src.ldpc_decoder_validator import LDPC_Decoder_Validator
 
 class LDPC_Decoder(Elaboratable):
-    def __init__(self, GeneratorMatrix, codeword_width):
+    def __init__(self, ParityCheckMatrix, codeword_width, data_width):
 
-        #[PARAMETER] - codeword_width: Width of the output Codeword
+        #[PARAMETER] - codeword_width: Width of the input Codeword
         self.codeword_width = int(codeword_width)
-        self.GeneratorMatrixPythonArray = GeneratorMatrix
-        #[PARAMETER] - data_input_length: Width of the data input
-        self.data_output_length = int(len(GeneratorMatrix))
 
-        #[CONSTANT] - gen_matrix: A generator matrix constant
-        self.gen_matrix =  Array([Const(GeneratorMatrix[_][0],unsigned(self.codeword_width)) for _ in range(self.data_output_length)])
+        #[PARAMETER] - ParityCheckMatrixPythonArray: Python Array representing the parity check matrix
+        self.ParityCheckMatrixPythonArray = ParityCheckMatrix
 
-        #[INPUT] - start: The start signal to start the decoding process(codeword)
-        self.start = Signal(1)
+        #[PARAMETER] - ParityCheckMatrixRows: Width of the data input
+        self.ParityCheckMatrixRows = int(len(ParityCheckMatrix))
 
-        #[INPUT] - data_input: The data to be encoded
-        self.data_input = Signal(codeword_width)
+        #[INPUT] - start: The start signal to start the decoding process
+        self.start = Signal(1, name="input_start")
+
+        #[INPUT] - data_input: The codeword to be decoded
+        self.data_input = Signal(codeword_width, name="input_data")
         
-        #[OUTPUT] - data_output: The encoded data (codeword)
-        self.data_output = Signal(self.data_output_length, reset=0, name="output_signal")
+        #[PARAMETER] - data_output_width: The length of the output data
+        self.data_output_width = data_width
 
-        #[OUTPUT] - success : The encoded data success (codeword)
-        self.success = Signal(1, reset=0, name="success")
+        #[OUTPUT] - data_output: The encoded data (codeword)
+        self.data_output = Signal(self.data_output_width, reset=0, name="output_data")
+
+        #[OUTPUT] - success : Flag indicating whether decoding was successful or not
+        self.success = Signal(1, reset=0, name="output_success")
  
         #[OUTPUT] - done: The done signal to indicate that the decoding process has stopped.
-        self.done = Signal(1, reset=0, name="Output_Done")
+        self.done = Signal(1, reset=0, name="output_done")
 
-        #[OUTPUT] - success: The success signal to indicate that decoding has completed successfully.
-        self.success = Signal(1, reset=0)
-
-    
- 
     def ports(self):
-        return [self.data_input, self.data_output, self.start, self.done]
+        return [self.data_input, self.start, self.data_output, self.done, self.success]
 
     def elaborate(self, platform):
         #Instantiate the Module
         m = Module()
-        for i in range(0,self.codeword_width+1):
-            m.submodules["decoder"+str(i)] = LDPC_Decoder_Validator(self.GeneratorMatrixPythonArray,self.codeword_width)
 
-        codeword_working = Array([Signal(unsigned(self.codeword_width), reset=0) for _ in range(self.codeword_width+1)])
-        output_ok = Array([Signal(unsigned(self.data_output_length), reset=0) for _ in range(self.codeword_width+1)])
-        done_test = Signal(1)
-        output_ready = Signal(1)
-        m.d.comb += done_test.eq(m.submodules["decoder"+str(2)].done)
-        counter = Signal(self.data_output_length)
+        #Instantiate a decoder/validator for each bit-flip combination of the input codeword
+        for i in range(0,self.codeword_width+1):
+            m.submodules["decoder"+str(i)] = LDPC_Decoder_Validator(self.ParityCheckMatrixPythonArray,self.codeword_width)
+
+        #codeword_list - An array containing the input codeword and copies of the input codeword, each with a different bit flipped
+        codeword_list = Array([Signal(unsigned(self.codeword_width), reset=0) for _ in range(self.codeword_width+1)])
+        
+        #decoder_output_list - An array containing the parity check status of each parity check row for an input codeword
+        decoder_output_list = Array([Signal(unsigned(self.ParityCheckMatrixRows), reset=0) for _ in range(self.codeword_width+1)])
+
+        #decoders_done - A signal which lets the top level know when the submodules have finished decoding/validating
+        decoders_done = Signal(1)
+        m.d.comb += decoders_done.eq(m.submodules["decoder"+str(self.codeword_width)].done)
+
+        #counter - A timeout counter for catching when the decoder never finishes decoding
+        counter = Signal(self.codeword_width)
+
+        #pipeline_stage - A signal for keeping track of the pipeline stage
+        pipeline_stage = Signal(3, reset=0)
+
+        #pipeline_stage - A signal for starting the submodules
+        start_submodules = Signal(1, reset=0)
+
         for i in range(0,self.codeword_width+1):              
-            m.d.comb +=  m.submodules["decoder"+str(i)].start.eq(self.start)
-            m.d.sync +=  m.submodules["decoder"+str(i)].data_input.eq(codeword_working[i])
-            m.d.comb +=  output_ok[i].eq(m.submodules["decoder"+str(i)].data_output)
+            m.d.comb +=  m.submodules["decoder"+str(i)].start.eq(start_submodules)
+            m.d.sync +=  m.submodules["decoder"+str(i)].data_input.eq(codeword_list[i])
+            m.d.comb +=  decoder_output_list[i].eq(m.submodules["decoder"+str(i)].data_output)
     
+        #Reset the relevant registers/wires and load the input codeword into a decoder input register
         with m.If(self.start==1):
-            for i in range(0,self.codeword_width):
-                m.d.sync += [
-                    codeword_working[i].eq(self.data_input),
-                    codeword_working[i][i].eq(~self.data_input[i]),
-                ]
             m.d.sync += [
-                codeword_working[self.codeword_width].eq(self.data_input),
+                codeword_list[self.codeword_width].eq(self.data_input),
                 self.data_output.eq(0),
                 self.done.eq(0),
-                output_ready.eq(0),
-                self.success.eq(0)
-                
+                self.success.eq(0),
+                counter.eq(0),
+                pipeline_stage.eq(1)
             ]
-        with m.Elif((self.start==0)):
+        #Load the input codeword into the codeword list
+        with m.If(pipeline_stage==1 & (~self.done)):
+            for i in range(0,self.codeword_width):
+                m.d.sync += [
+                    codeword_list[i].eq(codeword_list[self.codeword_width]),
+                    pipeline_stage.eq(pipeline_stage+1)
+                ]
+        #Flip the relevant bit on the codewords in the codeword list
+        with m.If(pipeline_stage==2 & (~self.done)):
+            for i in range(0,self.codeword_width):
+                m.d.sync += [
+                    codeword_list[i][i].eq(~codeword_list[i][i]),
+                    pipeline_stage.eq(pipeline_stage+1)
+                ]
+        #Start validating all the codeword variations (Set Start Bit to 1)
+        with m.Elif(pipeline_stage==3 & (~self.done)):
+            for i in range(0,self.codeword_width):
+                m.d.sync += [
+                    start_submodules.eq(1),
+                    pipeline_stage.eq(pipeline_stage+1)
+                ]
+        #Start validating all the codeword variations (Set Start Bit to 0)
+        with m.Elif(pipeline_stage==4 & (~self.done)):
+            for i in range(0,self.codeword_width):
+                m.d.sync += [
+                    start_submodules.eq(0),
+                    pipeline_stage.eq(pipeline_stage+1)
+                ]
+        #Start counting the timeout and validating if any of the submodules was successful in validating the codeword.
+        #Finally, output success or failure along with output data and STOP.
+        with m.Elif(pipeline_stage==5  & (~self.done)):
             for i in range(0,self.codeword_width+1):
                 m.d.sync +=  counter.eq(counter+1)
-        with m.If((self.start==0)&(done_test)):
-            for i in range(0,self.codeword_width+1):
-                with m.If(output_ok[i]==0b000):
-                    m.d.sync+=[output_ready.eq(1),
-                                self.data_output.eq(codeword_working[i][self.data_output_length:])]
-        with m.If((self.start==0)& (done_test) & output_ready):
-                    m.d.sync+=[ self.done.eq(1), self.success.eq(1)]
-        with m.Elif((self.start==0)& (done_test) & counter==(self.codeword_width+1)):
-            m.d.sync+=[ self.done.eq(1), self.success.eq(0)]
+            with m.If( (decoders_done) & (counter>(self.codeword_width+2))):
+                m.d.sync+=[ self.done.eq(1), self.success.eq(0)]
+            with m.Elif( (decoders_done)):
+                for i in range(0,self.codeword_width+1):
+                    with m.If(decoder_output_list[i]==0b000):
+                        m.d.sync+=[self.data_output.eq(codeword_list[self.codeword_width][ self.codeword_width-self.data_output_width:]),
+                                    self.done.eq(1), self.success.eq(1)]
         return m

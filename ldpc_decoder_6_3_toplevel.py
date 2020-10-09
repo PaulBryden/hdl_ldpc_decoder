@@ -19,6 +19,6 @@ if __name__ == "__main__":
                          [0b100110] ]
 
     #Instantiate the LDPC_Encoder Module with the generator matrix and output codeword size as parameters
-    m.submodules.LDPC_Decoder = LDPC_Decoder = LDPC_Decoder(parityCheckMatrix,6)
+    m.submodules.LDPC_Decoder = LDPC_Decoder = LDPC_Decoder(parityCheckMatrix,6,3)
 
     main_runner(parser, args, m, ports=[LDPC_Decoder.data_input, LDPC_Decoder.data_output, LDPC_Decoder.start, LDPC_Decoder.done, LDPC_Decoder.success])    
