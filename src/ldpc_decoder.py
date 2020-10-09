@@ -71,7 +71,7 @@ class LDPC_Decoder(Elaboratable):
             m.d.comb +=  decoder_output_list[i].eq(m.submodules["decoder"+str(i)].data_output)
     
         #Reset the relevant registers/wires and load the input codeword into a decoder input register
-        with m.If(self.start==1):
+        with m.If(self.start):
             m.d.sync += [
                 codeword_list[self.codeword_width].eq(self.data_input),
                 self.data_output.eq(0),
@@ -81,28 +81,28 @@ class LDPC_Decoder(Elaboratable):
                 pipeline_stage.eq(1)
             ]
         #Load the input codeword into the codeword list
-        with m.If(pipeline_stage==1 & (~self.done)):
+        with m.Elif(pipeline_stage==1 & (~self.start)):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     codeword_list[i].eq(codeword_list[self.codeword_width]),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Flip the relevant bit on the codewords in the codeword list
-        with m.If(pipeline_stage==2 & (~self.done)):
+        with m.Elif(pipeline_stage==2 & (~self.start)):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     codeword_list[i][i].eq(~codeword_list[i][i]),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Start validating all the codeword variations (Set Start Bit to 1)
-        with m.Elif(pipeline_stage==3 & (~self.done)):
+        with m.Elif(pipeline_stage==3 & (~self.start)):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     start_submodules.eq(1),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Start validating all the codeword variations (Set Start Bit to 0)
-        with m.Elif(pipeline_stage==4 & (~self.done)):
+        with m.Elif(pipeline_stage==4 & (~self.start)):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     start_submodules.eq(0),
@@ -110,7 +110,7 @@ class LDPC_Decoder(Elaboratable):
                 ]
         #Start counting the timeout and validating if any of the submodules was successful in validating the codeword.
         #Finally, output success or failure along with output data and STOP.
-        with m.Elif(pipeline_stage==5  & (~self.done)):
+        with m.Elif(pipeline_stage==5  & (~self.done) & (~self.start)):
             for i in range(0,self.codeword_width+1):
                 m.d.sync +=  counter.eq(counter+1)
             with m.If( (decoders_done) & (counter>(self.codeword_width+2))):
@@ -120,4 +120,5 @@ class LDPC_Decoder(Elaboratable):
                     with m.If(decoder_output_list[i]==0b000):
                         m.d.sync+=[self.data_output.eq(codeword_list[self.codeword_width][ self.codeword_width-self.data_output_width:]),
                                     self.done.eq(1), self.success.eq(1)]
+
         return m
