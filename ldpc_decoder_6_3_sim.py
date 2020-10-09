@@ -7,9 +7,9 @@ from src.ldpc_decoder import LDPC_Decoder
 def testbench_process():
     #Run simulation for input word '0b110110'
     yield data_input.eq(0b110110)
-    yield Delay(1e-6)
     yield start.eq(1)
     yield Delay(1e-6)
+    yield start.eq(0)
 
     #Delay for 15 clock cycles
     for i in range(15):

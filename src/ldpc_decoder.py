@@ -81,28 +81,28 @@ class LDPC_Decoder(Elaboratable):
                 pipeline_stage.eq(1)
             ]
         #Load the input codeword into the codeword list
-        with m.Elif(pipeline_stage==1 & (~self.start)):
+        with m.Elif(pipeline_stage==1):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     codeword_list[i].eq(codeword_list[self.codeword_width]),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Flip the relevant bit on the codewords in the codeword list
-        with m.Elif(pipeline_stage==2 & (~self.start)):
+        with m.Elif(pipeline_stage==2 ):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     codeword_list[i][i].eq(~codeword_list[i][i]),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Start validating all the codeword variations (Set Start Bit to 1)
-        with m.Elif(pipeline_stage==3 & (~self.start)):
+        with m.Elif(pipeline_stage==3):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     start_submodules.eq(1),
                     pipeline_stage.eq(pipeline_stage+1)
                 ]
         #Start validating all the codeword variations (Set Start Bit to 0)
-        with m.Elif(pipeline_stage==4 & (~self.start)):
+        with m.Elif(pipeline_stage==4 ):
             for i in range(0,self.codeword_width):
                 m.d.sync += [
                     start_submodules.eq(0),
@@ -120,5 +120,4 @@ class LDPC_Decoder(Elaboratable):
                     with m.If(decoder_output_list[i]==0b000):
                         m.d.sync+=[self.data_output.eq(codeword_list[self.codeword_width][ self.codeword_width-self.data_output_width:]),
                                     self.done.eq(1), self.success.eq(1)]
-
         return m
