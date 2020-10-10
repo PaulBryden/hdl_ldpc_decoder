@@ -34,4 +34,4 @@ jobs:
     - name: Test with pytest
       run: |
         python -m unittest ldpc_decoder_9_4_unit_tests.py
-	python -m unittest ldpc_decoder_6_3_unit_tests.py
+        python -m unittest ldpc_decoder_6_3_unit_tests.py
