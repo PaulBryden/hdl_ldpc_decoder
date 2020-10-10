@@ -18,22 +18,22 @@ class LDPC_Decoder(Elaboratable):
         self.ParityCheckMatrixRows = int(len(ParityCheckMatrix))
 
         #[INPUT] - start: The start signal to start the decoding process
-        self.start = Signal(1, name="input_start")
+        self.start = Signal(1)
 
         #[INPUT] - data_input: The codeword to be decoded
-        self.data_input = Signal(codeword_width, name="input_data")
+        self.data_input = Signal(codeword_width)
         
         #[PARAMETER] - data_output_width: The length of the output data
         self.data_output_width = data_width
 
         #[OUTPUT] - data_output: The encoded data (codeword)
-        self.data_output = Signal(self.data_output_width, reset=0, name="output_data")
+        self.data_output = Signal(self.data_output_width, reset=0)
 
         #[OUTPUT] - success : Flag indicating whether decoding was successful or not
-        self.success = Signal(1, reset=0, name="output_success")
+        self.success = Signal(1, reset=0)
  
         #[OUTPUT] - done: The done signal to indicate that the decoding process has stopped.
-        self.done = Signal(1, reset=0, name="output_done")
+        self.done = Signal(1, reset=0)
 
     def ports(self):
         return [self.data_input, self.start, self.data_output, self.done, self.success]
