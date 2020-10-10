@@ -83,7 +83,7 @@ These commands will output the (6,3) or (9,4) LDPC Decoder module in Verilog for
 python3 ldpc_decoder_6_3_sim.py #Run the simulation and generate the output waveform
 gtkwave test_6_3.vcd #Open the output waveform
 ```
-OR
+OR  
 ```bash
 python3 ldpc_decoder_9_4_sim.py #Run the simulation and generate the output waveform
 gtkwave test_9_4.vcd #Open the output waveform
@@ -95,12 +95,20 @@ Formal verification is the process of using Assert, Assume and Cover statements 
 python3 ldpc_decoder_9_4_verification.py generate -t il > toplevel.il
 sby -f ldpc_decoder.sby
 ```
+OR  
+```bash
+python3 ldpc_decoder_6_3_verification.py generate -t il > toplevel.il
+sby -f ldpc_decoder.sby
+```  
 
 ## Unit Testing
 Unit testing is the process of providing known inputs to a HDL simulation and validating the outputs are as expected. In this case the unit tests validate that the Decoder can decode 0 bit errors and 1-bit errors for the 6_3 and 9_4 code.
 ```bash
-python3 ldpc_decoder_9_4_verification.py generate -t il > toplevel.il
-sby -f ldpc_decoder.sby
+python3 -m unittest ldpc_decoder_9_4_unit_tests.py
+```  
+OR  
+```bash
+python3 -m unittest ldpc_decoder_6_3_unit_tests.py
 ```
 
 ## Results  
