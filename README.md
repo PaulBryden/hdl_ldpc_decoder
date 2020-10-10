@@ -1,4 +1,5 @@
 # HDL LDPC Decoder  
+[![Actions Status](https://github.com/PaulBryden/hdl_ldpc_decoder/workflows/hdl_ldpc_decoder_continuous_integration/badge.svg)](https://github.com/PaulBryden/hdl_ldpc_decoder/actions)  
 A customizable, nMigen-based, 1-bit error correcting, LDPC Decoder IP Core.  
 Produced for educational purposes.  
 
@@ -112,12 +113,13 @@ python3 -m unittest ldpc_decoder_6_3_unit_tests.py
 ```
 
 ## Results  
+Unit Testing:  
+[![Actions Status](https://github.com/PaulBryden/hdl_ldpc_decoder/workflows/hdl_ldpc_decoder_continuous_integration/badge.svg)](https://github.com/PaulBryden/hdl_ldpc_decoder/actions)  
+
 **(6,3) LDPC Decoder**  
 Simulation:  
 ![Image](img/6_3_Simulation.jpg)  
 Formal Verification:
-**PASSED**  
-Unit Testing:
 **PASSED**  
   
 **(9,4) LDPC Decoder**  
@@ -125,5 +127,3 @@ Simulation:
 ![Image](img/9_4_Simulation.jpg)  
 Formal Verification:
 **PASSED**  
-Unit Testing:
-**PASSED**
